@@ -1,0 +1,6 @@
+[submodule "powershell-yaml"]
+	path = powershell-yaml
+	url = https://github.com/cloudbase/powershell-yaml.git
+[submodule "TaskPool"]
+	path = TaskPool
+	url = https://github.com/macrat/TaskPool.git
