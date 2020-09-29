@@ -12,16 +12,31 @@ $conf.対象ホスト = $targets
 $conf.ログ保存先 = (Resolve-Path $conf.ログ保存先).Path
 $conf.結果保存先 = (Resolve-Path $conf.結果保存先).Path
 
-if ($conf.配布ファイル.Count -eq 0) {
-    $conf.配布ファイル = @()
+if ($conf.ステップ.Count -eq 0) {
+    Write-Error "実行するステップが設定されていません。" -ErrorAction Stop
 }
-$conf.配布ファイル = $conf.配布ファイル | foreach {
-    $_.ファイル = $_.ファイル | foreach { (Resolve-Path $_ -ErrorAction Stop).Path }
-    $_
-}
+foreach ($i in 0..($conf.ステップ.Count - 1)) {
+    $step = $conf.ステップ[$i]
 
-if ($conf.回収ファイル.Count -eq 0) {
-    $conf.回収ファイル = @()
+    if ($step.配布 -and $step.回収) {
+        Write-Error "$($i + 1)つめのステップが不正です: 1つのステップに配布と回収の両方を含めることは出来ません。" -ErrorAction Stop
+    } elseif ($step.配布) {
+        if (-not $step.配布.ファイル) {
+            Write-Error "$($i + 1)つめのステップが不正です: ファイルが設定されていません。" -ErrorAction Stop
+        }
+        if (-not $step.配布.宛先) {
+            Write-Error "$($i + 1)つめのステップが不正です: 宛先が設定されていません。" -ErrorAction Stop
+        }
+    } elseif ($step.回収) {
+        if (-not $step.回収.ファイル) {
+            Write-Error "$($i + 1)つめのステップが不正です: ファイルが設定されていません。" -ErrorAction Stop
+        }
+        if (-not $step.回収.宛先) {
+            Write-Error "$($i + 1)つめのステップが不正です: 宛先が設定されていません。" -ErrorAction Stop
+        }
+    } else {
+        Write-Error "$($i + 1)つめのステップが不正です: ステップには配布もしくは回収を指定する必要があります。" -ErrorAction Stop
+    }
 }
 
 if ($conf.並列実行数 -lt 1) {
@@ -33,7 +48,11 @@ if ($conf.最大試行回数 -lt 1) {
     $conf.最大試行回数 = 1
 }
 
-$conf | ConvertTo-Json | Out-Host
+Write-Host "タスク: $($conf.タスク名) （$($conf.ステップ.Count)ステップ）"
+Write-Host "対象ホスト: $($conf.対象ホスト一覧) （$($targets.Count)ホスト）"
+Write-Host "並列実行数: $($conf.並列実行数)ホスト  最大試行回数: $($conf.最大試行回数)回まで"
+Write-Host "ログ保存先: $($conf.ログ保存先)"
+Write-Host "結果保存先: $($conf.結果保存先)"
 
 $credential = Get-Credential $conf.ユーザ名 -ErrorAction Stop
 if (-not $credential) {
@@ -57,48 +76,46 @@ foreach ($t in $targets) {
 
             Set-Location $workDir
 
-            foreach ($fileSet in $conf.配布ファイル) {
-                $path = "\\${address}\$($fileSet.配布先 -replace "(^[a-zA-Z]):","`$1$")"
+            foreach ($step in $conf.ステップ) {
+                if ($step.配布) {
+                    $path = "\\${address}\$($step.配布.宛先 -replace "(^[a-zA-Z]):","`$1$")"
 
-                New-PSDrive FileDstributor -PSProvider FileSystem -Root $path -Credential $credential -ErrorAction Stop
+                    New-PSDrive FileDstributor -PSProvider FileSystem -Root $path -Credential $credential -ErrorAction Stop
 
-                if (-not (Test-Path -Type Container "FileDstributor:/")) {
-                    throw "対象フォルダに接続できませんでした"
-                }
+                    if (-not (Test-Path -Type Container "FileDstributor:/")) {
+                        throw "対象フォルダに接続できませんでした"
+                    }
 
-                foreach ($file in $fileSet.ファイル) {
-                    Copy-Item $file "FileDstributor:/"
-                }
+                    Copy-Item $step.配布.ファイル "FileDstributor:/"
 
-                Remove-PSDrive FileDstributor
-            }
-
-            foreach ($file in $conf.回収ファイル) {
-                $path = "\\${address}\$((Split-Path $file.ファイル) -replace "(^[a-zA-Z]):","`$1$")"
-                New-PSDrive FileDstributor -PSProvider FileSystem -Root $path -Credential $credential -ErrorAction Stop
-
-                if (-not (Test-Path -Type Container "FileDstributor:/")) {
-                    throw "対象フォルダに接続できませんでした"
-                }
-
-                $fname = "FileDstributor:/$(Split-Path -Leaf $file.ファイル)"
-                if (-not (Test-Path $fname)) {
-                    throw "回収ファイル `"${file}`" が見つかりません"
-                }
-
-                $targetDir = $file.回収先 -replace "HOST_ADDRESS",$address
-                if (-not (Test-Path $targetDir)) {
-                    mkdir $targetDir
-                }
-
-                if (Test-Path -Type Leaf $fname) {
-                    Copy-Item $fname $targetDir
+                    Remove-PSDrive FileDstributor
                 } else {
-                    $target = "${targetDir}/$(Split-Path -Leaf $fname).csv"
-                    Get-ChildItem $fname | select -Property Name,Length,Mode,CreationTime,LastWriteTime,LastAccessTime | Export-Csv $target -NoTypeInformation -Encoding Default
-                }
+                    $path = "\\${address}\$((Split-Path $step.回収.ファイル) -replace "(^[a-zA-Z]):","`$1$")"
+                    New-PSDrive FileDstributor -PSProvider FileSystem -Root $path -Credential $credential -ErrorAction Stop
 
-                Remove-PSDrive FileDstributor
+                    if (-not (Test-Path -Type Container "FileDstributor:/")) {
+                        throw "対象フォルダに接続できませんでした"
+                    }
+
+                    $fname = "FileDstributor:/$(Split-Path -Leaf $step.回収.ファイル)"
+                    if (-not (Test-Path $fname)) {
+                        throw "回収ファイル `"${file}`" が見つかりません"
+                    }
+
+                    $targetDir = $step.回収.宛先 -replace "HOST_ADDRESS",$address
+                    if (-not (Test-Path $targetDir)) {
+                        mkdir $targetDir
+                    }
+
+                    if (Test-Path -Type Leaf $fname) {
+                        Copy-Item $fname $targetDir
+                    } else {
+                        $target = "${targetDir}/$(Split-Path -Leaf $fname).csv"
+                        Get-ChildItem $fname | select -Property Name,Length,Mode,CreationTime,LastWriteTime,LastAccessTime | Export-Csv $target -NoTypeInformation -Encoding Default
+                    }
+
+                    Remove-PSDrive FileDstributor
+                }
             }
         }
     })
@@ -168,4 +185,8 @@ try {
             試行回数 = $status.TryCount[$_]
         }
     } | Export-Csv $conf.結果保存先 -NoTypeInformation -Encoding Default
+}
+
+if ($MyInvocation.InvocationName -eq "&") {
+    pause
 }
