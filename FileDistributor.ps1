@@ -1,4 +1,4 @@
-﻿using module .\TaskPool
+﻿Import-Module .\TaskPool
 Import-Module .\powershell-yaml
 
 
@@ -59,14 +59,15 @@ if (-not $credential) {
     exit
 }
 
-$pool = [TaskPool]::new($conf.並列実行数)
+$pool = New-TPTaskPool -NumSlots $conf.並列実行数
 
 foreach ($t in $targets) {
-    $pool.Add([Task]@{
-        Name = "$($conf.タスク名)_${t}"
-        MaxRetry = $conf.最大試行回数 - 1
-        Arguments = @($t, $conf, $workDir)
-        Action = {
+    Add-TPTask                              `
+        -TaskPool $pool                     `
+        -Name "$($conf.タスク名)_${t}"      `
+        -MaxRetry ($conf.最大試行回数 - 1)  `
+        -Arguments @($t, $conf, $workDir)   `
+        -Action {
             param([string]$address, [Hashtable]$conf, [string]$workDir)
 
             ping -n 1 $address | Out-Null
@@ -117,8 +118,7 @@ foreach ($t in $targets) {
                     Remove-PSDrive FileDstributor
                 }
             }
-        }
-    })
+        } | Out-Null
 }
 
 $status = [PSCustomObject]@{
