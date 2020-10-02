@@ -130,8 +130,7 @@ $Task = {
     $mount = {
         param([string]$TargetPath)
 
-        $path = $TargetPath -replace "(^[a-zA-Z]):","`$1$" -replace "\\$",""
-        $path = "\\${address}\${path}"
+        $path = Join-Path "\\${address}" ($TargetPath -replace "(^[a-zA-Z]):","`$1$" -replace "\\$","")
 
         New-PSDrive FileDistoributor -PSProvider FileSystem -Root $path -Credential $credential -Scope 1 -ErrorAction Stop | Out-Null
 
@@ -182,7 +181,7 @@ $Task = {
             Get-FileHash -Algorithm SHA256 $fname | foreach {
                 [PSCustomObject]@{
                     ホスト = $address
-                    ファイル名 = "$(Split-Path $step.ハッシュ取得.ファイル)\$(Split-Path -Leaf $_.Path)"
+                    ファイル名 = Join-Path (Split-Path $step.ハッシュ取得.ファイル) (Split-Path -Leaf $_.Path)
                     ハッシュ値 = $_.Hash
                 }
             } | Export-Csv $step.ハッシュ取得.保存先 -NoTypeInformation -Append -Encoding Default
