@@ -8,9 +8,6 @@ function ConvertFrom-Configuration {
         "$($h.アドレス)"
     }
 
-    $conf.ログ保存先 = (Resolve-Path $conf.ログ保存先).Path
-    $conf.結果保存先 = (Resolve-Path $conf.結果保存先).Path
-
     if ($conf.ステップ.Count -eq 0) {
         Write-Error "実行するステップが設定されていません。" -ErrorAction Stop
     }
