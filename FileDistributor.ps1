@@ -17,8 +17,8 @@ function ConvertFrom-Configuration {
     foreach ($i in 0..($conf.ステップ.Count - 1)) {
         $step = $conf.ステップ[$i]
 
-        if ($step.配布 -and $step.回収) {
-            Write-Error "$($i + 1)つめのステップが不正です: 1つのステップに配布と回収の両方を含めることは出来ません。" -ErrorAction Stop
+        if ($step.Count -ne 1) {
+            Write-Error "$($i + 1)つめのステップが不正です: 1つのステップには1つの指示を設定する必要があります。" -ErrorAction Stop
         } elseif ($step.配布) {
             if (-not $step.配布.ファイル) {
                 Write-Error "$($i + 1)つめのステップが不正です: ファイルが設定されていません。" -ErrorAction Stop
@@ -33,8 +33,15 @@ function ConvertFrom-Configuration {
             if (-not $step.回収.宛先) {
                 Write-Error "$($i + 1)つめのステップが不正です: 宛先が設定されていません。" -ErrorAction Stop
             }
+        } elseif ($step.ハッシュ取得) {
+            if (-not $step.ハッシュ取得.ファイル) {
+                Write-Error "$($i + 1)つめのステップが不正です: ファイルが設定されていません。" -ErrorAction Stop
+            }
+            if (-not $step.ハッシュ取得.保存先) {
+                Write-Error "$($i + 1)つめのステップが不正です: 保存先が設定されていません。" -ErrorAction Stop
+            }
         } else {
-            Write-Error "$($i + 1)つめのステップが不正です: ステップには配布もしくは回収を指定する必要があります。" -ErrorAction Stop
+            Write-Error "$($i + 1)つめのステップが不正です: 不明な指示 `"$($step.Keys)`" が設定されています。" -ErrorAction Stop
         }
     }
 
@@ -148,7 +155,7 @@ $Task = {
             & $mount $step.配布.宛先
 
             Copy-Item $step.配布.ファイル "FileDistoributor:/"
-        } else {
+        } elseif ($step.配布) {
             & $mount (Split-Path $step.回収.ファイル)
 
             $fname = "FileDistoributor:/$(Split-Path -Leaf $step.回収.ファイル)"
@@ -167,7 +174,24 @@ $Task = {
                 $target = "${targetDir}/$(Split-Path -Leaf $fname).csv"
                 Get-ChildItem $fname | select -Property Name,Length,Mode,CreationTime,LastWriteTime,LastAccessTime | Export-Csv $target -NoTypeInformation -Encoding Default
             }
+        } elseif ($step.ハッシュ取得) {
+            & $mount (Split-Path $step.ハッシュ取得.ファイル)
+
+            $fname = "FileDistoributor:/$(Split-Path -Leaf $step.ハッシュ取得.ファイル)"
+            if (-not (Test-Path $fname)) {
+                throw "ハッシュ取得対象の `"$($step.ハッシュ取得.ファイル)`" が見つかりません"
+            }
+
+            Get-FileHash -Algorithm SHA256 $fname | foreach {
+                [PSCustomObject]@{
+                    ホスト = $address
+                    ファイル名 = "$(Split-Path $step.ハッシュ取得.ファイル)\$(Split-Path -Leaf $_.Path)"
+                    ハッシュ値 = $_.Hash
+                }
+            } | Export-Csv $step.ハッシュ取得.保存先 -NoTypeInformation -Append -Encoding Default
         }
+
+        Remove-PSDrive FileDistoributor -ErrorAction Ignore
     }
 }
 
