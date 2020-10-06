@@ -178,6 +178,7 @@ $Task = {
                     ホスト = $address
                     ファイル名 = Join-Path (Split-Path $step.ハッシュ取得.ファイル) (Split-Path -Leaf $_.Path)
                     ハッシュ値 = $_.Hash
+                    取得日時 = Get-Date
                 }
             } | Export-Csv $step.ハッシュ取得.保存先 -NoTypeInformation -Append -Encoding Default
         }
