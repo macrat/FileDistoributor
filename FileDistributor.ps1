@@ -164,12 +164,7 @@ $Task = {
                 mkdir $targetDir
             }
 
-            if (Test-Path -Type Leaf $fname) {
-                Copy-Item $fname $targetDir | Out-Null
-            } else {
-                $target = "${targetDir}/$(Split-Path -Leaf $fname).csv"
-                Get-ChildItem $fname | select -Property Name,Length,Mode,CreationTime,LastWriteTime,LastAccessTime | Export-Csv $target -NoTypeInformation -Encoding Default
-            }
+            Copy-Item -Recurse $fname $targetDir | Out-Null
         } elseif ($step.ハッシュ取得) {
             & $mount (Split-Path $step.ハッシュ取得.ファイル)
 

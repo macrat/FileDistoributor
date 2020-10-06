@@ -33,8 +33,8 @@ FileDistributor
 
   # 対象ホストからファイルを回収する。
   - 回収:
-      ファイル: "C:/Users"  # 回収対象がフォルダの場合、配下のファイルの一覧がCSV形式で保存されます。
-      宛先: "回収物/HOST_ADDRESS"
+      ファイル: "C:/Windows/System23/winevt/Logs/Microsoft-Windows-Security-*"  # 回収したいファイルの名前。アスタリスクで複数のファイルを回収できます。
+      宛先: "回収物/HOST_ADDRESS"  # 回収したファイルを保存する場所。HOST_ADDRESSは対象ホストのアドレスで置換されます。
 
   # 対象ホストにあるファイルのハッシュ値を取得する。
   - ハッシュ取得:
