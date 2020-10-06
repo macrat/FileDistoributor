@@ -103,6 +103,10 @@ function New-StatusReporter($Conf) {
         OnTaskComplete = {
             $target = $_.Task.Arguments[0]
 
+            foreach ($artifact in $_.Result) {
+                $artifact.Content | Export-Csv $artifact.Path -NoTypeInformation -Append -Encoding Default
+            }
+
             $status.Executed += 1
             $status.Completed += 1
             $status.SuccessHosts[$target] = 1
@@ -160,6 +164,8 @@ $Task = {
 
     Set-Location $workDir
 
+    $artifacts = @()
+
     foreach ($step in $conf.ステップ) {
         if ($step.配布) {
             & $mount $step.配布.宛先
@@ -187,19 +193,24 @@ $Task = {
                 throw "ハッシュ取得対象の `"$($step.ハッシュ取得.ファイル)`" が見つかりません"
             }
 
-            Get-FileHash -Algorithm SHA256 $fname | foreach {
-                [PSCustomObject]@{
-                    取得日時 = Get-Date
-                    ホスト = $address
-                    ファイル名 = Join-Path (Split-Path $step.ハッシュ取得.ファイル) (Split-Path -Leaf $_.Path)
-                    ハッシュ値 = $_.Hash
-                    ファイルサイズ = (Get-Item $_.Path).Length
-                }
-            } | Export-Csv $step.ハッシュ取得.保存先 -NoTypeInformation -Append -Encoding Default
+            $artifacts += @{
+                Path = $step.ハッシュ取得.保存先
+                Content = (Get-FileHash -Algorithm SHA256 $fname | foreach {
+                    [PSCustomObject]@{
+                        取得日時 = Get-Date
+                        ホスト = $address
+                        ファイル名 = Join-Path (Split-Path $step.ハッシュ取得.ファイル) (Split-Path -Leaf $_.Path)
+                        ハッシュ値 = $_.Hash
+                        ファイルサイズ = (Get-Item $_.Path).Length
+                    }
+                })
+            }
         }
 
         Remove-PSDrive FileDistoributor -ErrorAction Ignore
     }
+
+    $artifacts
 }
 
 
