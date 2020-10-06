@@ -8,7 +8,7 @@ FileDistributor
 
 ### 1. 設定ファイルを作る
 
-`config.yml` の名前で以下のような設定ファイルを作ります。
+`config.yml` などの名前で以下のような設定ファイルを作ります。
 
 ``` yaml
 タスク名: "一括集配テスト"
@@ -59,8 +59,10 @@ FileDistributor
 `FileDistrobutor.ps1` を右クリックして「PowerShellで実行」を選ぶか、シェルから以下のコマンドで実行します。
 
 ``` powershell
-PS> ./FileDistrobutor.ps1
+PS> .\FileDistrobutor.ps1 .\config.yml
 ```
+
+なお、 `.\config.yml` は省略することもできます。
 
 実行すると `ユーザ名` で指定したユーザのパスワードを聞かれるので、入力します。
 
