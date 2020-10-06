@@ -20,7 +20,7 @@ function ConvertFrom-Configuration {
     $conf = $input | ConvertFrom-Yaml
     $conf.対象ホスト = foreach ($h in (Get-Content $conf.対象ホスト一覧 | ConvertFrom-Csv)) {
         "$($h.アドレス)"
-    }
+    } | Select-Object -Unique
 
     if ($conf.ステップ.Count -eq 0) {
         Write-Error "実行するステップが設定されていません。" -ErrorAction Stop
