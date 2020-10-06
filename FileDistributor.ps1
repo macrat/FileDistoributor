@@ -130,7 +130,7 @@ $Task = {
     $mount = {
         param([string]$TargetPath)
 
-        $path = Join-Path "\\${address}" ($TargetPath -replace "(^[a-zA-Z]):","`$1$" -replace "\\$","")
+        $path = (Join-Path "\\${address}" ($TargetPath -replace "(^[a-zA-Z]):","`$1$")) -replace "\\$",""
 
         New-PSDrive FileDistoributor -PSProvider FileSystem -Root $path -Credential $credential -Scope 1 -ErrorAction Stop | Out-Null
 
