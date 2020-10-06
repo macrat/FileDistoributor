@@ -1,4 +1,18 @@
-﻿Import-Module .\TaskPool
+﻿<#
+  .SYNOPSIS
+  多数のホストに一気にファイルをばらまく・回収する。
+
+  .PARAMETER Config
+  設定ファイルのパス。
+#>
+
+
+param(
+    [string]$Config = ".\config.yml"
+)
+
+
+Import-Module .\TaskPool
 Import-Module .\powershell-yaml
 
 
@@ -190,7 +204,7 @@ $Task = {
 
 
 if ($MyInvocation.InvocationName -ne ".") {
-    $conf = Get-Content "config.yml" | ConvertFrom-Configuration
+    $conf = Get-Content $Config | ConvertFrom-Configuration
     $workDir = Get-Location
 
     Write-Host "タスク: $($conf.タスク名) （$($conf.ステップ.Count)ステップ）"
