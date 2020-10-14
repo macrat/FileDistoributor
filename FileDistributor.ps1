@@ -20,12 +20,16 @@ function ConvertFrom-Configuration {
     $conf = $input | ConvertFrom-Yaml
 
     if (-not (Test-Path -PathType Leaf $conf.対象ホスト一覧)) {
-        Write-Error "対象ホスト一覧ファイルが見つかりません" -ErrorAction Stop
+        Write-Error "$($conf.対象ホスト一覧) が見つかりません。" -ErrorAction Stop
     }
 
     $conf.対象ホスト = Get-Content $conf.対象ホスト一覧 | ConvertFrom-Csv | foreach {
         "$($_.アドレス)"
     } | Select-Object -Unique
+
+    if ($conf.対象ホスト.Count -eq 0) {
+        Write-Error "$($conf.対象ホスト一覧) からホスト一覧を読み込むことが出来ませんでした。`"アドレス`"列が無いか、文字コードが正しく設定されていない可能性があります。" -ErrorAction Stop
+    }
 
     if ($conf.ステップ.Count -eq 0) {
         Write-Error "実行するステップが設定されていません。" -ErrorAction Stop
