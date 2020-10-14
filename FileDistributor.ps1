@@ -18,8 +18,9 @@ Import-Module .\powershell-yaml
 
 function ConvertFrom-Configuration {
     $conf = $input | ConvertFrom-Yaml
-    $conf.対象ホスト = foreach ($h in (Get-Content $conf.対象ホスト一覧 | ConvertFrom-Csv)) {
-        "$($h.アドレス)"
+
+    $conf.対象ホスト = Get-Content $conf.対象ホスト一覧 | ConvertFrom-Csv | foreach {
+        "$($_.アドレス)"
     } | Select-Object -Unique
 
     if ($conf.ステップ.Count -eq 0) {
