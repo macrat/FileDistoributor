@@ -19,6 +19,10 @@ Import-Module .\powershell-yaml
 function ConvertFrom-Configuration {
     $conf = $input | ConvertFrom-Yaml
 
+    if (-not (Test-Path -PathType Leaf $conf.対象ホスト一覧)) {
+        Write-Error "対象ホスト一覧ファイルが見つかりません" -ErrorAction Stop
+    }
+
     $conf.対象ホスト = Get-Content $conf.対象ホスト一覧 | ConvertFrom-Csv | foreach {
         "$($_.アドレス)"
     } | Select-Object -Unique
