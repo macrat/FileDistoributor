@@ -143,7 +143,7 @@ function New-StatusReporter($Conf) {
             $status.TryCount[$target] += 1
 
             & $writeStatus
-            & $writeLog $target $_.Error
+            & $writeLog $_.Result.ExecutionID $target $_.Error
 
             Write-Warning "${target}: $($_.Error)"
         }.GetNewClosure()
