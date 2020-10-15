@@ -12,8 +12,10 @@ param(
 )
 
 
-Import-Module .\TaskPool
-Import-Module .\powershell-yaml
+$scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
+
+Import-Module $scriptPath\TaskPool
+Import-Module $scriptPath\powershell-yaml
 
 
 function ConvertFrom-Configuration {
