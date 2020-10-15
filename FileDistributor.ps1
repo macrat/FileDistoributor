@@ -63,6 +63,10 @@ function ConvertFrom-Configuration {
             if (-not $step.ハッシュ取得.保存先) {
                 Write-Error "$($i + 1)つめのステップが不正です: 保存先が設定されていません。" -ErrorAction Stop
             }
+        } elseif ($step.DNS取得) {
+            if (-not $step.DNS取得.保存先) {
+                Write-Error "$($i + 1)つめのステップが不正です: 保存先が設定されていません。" -ErrorAction Stop
+            }
         } else {
             Write-Error "$($i + 1)つめのステップが不正です: 不明な指示 `"$($step.Keys)`" が設定されています。" -ErrorAction Stop
         }
@@ -216,6 +220,18 @@ $Task = {
                         ファイルサイズ = (Get-Item $_.Path).Length
                     }
                 })
+            }
+        } elseif ($step.DNS取得) {
+            $artifacts += @{
+                Path = $step.DNS取得.保存先
+                Content = [System.Net.Dns]::GetHostEntry($address) | foreach {
+                    [PSCustomObject]@{
+                        取得日時 = Get-Date
+                        ホスト = $address
+                        アドレス = $_.AddressList -join ","
+                        逆引きホスト名 = $_.HostName
+                    }
+                }
             }
         }
 

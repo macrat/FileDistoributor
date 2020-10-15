@@ -40,6 +40,10 @@ FileDistributor
   - ハッシュ取得:
       ファイル: "C:/Windows/System32/drivers/etc"
       保存先: "回収物/hosts_hash.csv"
+
+  # 対象ホストのIPアドレスや逆引きホスト名を取得する。
+  - DNS取得:
+      保存先: "回収物/dns_informations.csv"
 ```
 
 
