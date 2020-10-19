@@ -122,7 +122,7 @@ function New-StatusReporter($Conf) {
         OnTaskComplete = {
             $target = $_.Task.Arguments[0]
 
-            foreach ($artifact in $_.Result.Artifacts) {
+            foreach ($artifact in $_.Result) {
                 $artifact.Content | Export-Csv $artifact.Path -NoTypeInformation -Append -Encoding Default
             }
 
@@ -132,7 +132,7 @@ function New-StatusReporter($Conf) {
             $status.TryCount[$target] += 1
 
             & $writeStatus
-            & $writeLog $_.Result.ExecutionID $target $null
+            & $writeLog $_.ExecutionID $target $null
         }.GetNewClosure()
 
         OnTaskError = {
@@ -143,7 +143,7 @@ function New-StatusReporter($Conf) {
             $status.TryCount[$target] += 1
 
             & $writeStatus
-            & $writeLog ([GUID]::NewGuid().Guid) $target $_.Error
+            & $writeLog $_.ExecutionID $target $_.Error
 
             Write-Warning "${target}: $($_.Error)"
         }.GetNewClosure()
@@ -163,8 +163,6 @@ function New-StatusReporter($Conf) {
 
 $Task = {
     param([string]$address, [Hashtable]$conf, [string]$workDir, [PSCredential]$credential)
-
-    $executionID = [GUID]::NewGuid().Guid
 
     $mount = {
         param([string]$TargetPath)
@@ -219,7 +217,7 @@ $Task = {
                 Content = (Get-FileHash -Algorithm SHA256 $fname | foreach {
                     [PSCustomObject]@{
                         取得日時 = Get-Date
-                        実行ID = $executionID
+                        実行ID = $using:TPContext.ExecutionID
                         ホスト = $address
                         ファイル名 = Join-Path (Split-Path $step.ハッシュ取得.ファイル) (Split-Path -Leaf $_.Path)
                         ハッシュ値 = $_.Hash
@@ -233,7 +231,7 @@ $Task = {
                 Content = [System.Net.Dns]::GetHostEntry($address) | foreach {
                     [PSCustomObject]@{
                         取得日時 = Get-Date
-                        実行ID = $executionID
+                        実行ID = $using:TPContext.ExecutionID
                         ホスト = $address
                         アドレス = $_.AddressList -join ","
                         逆引きホスト名 = $_.HostName
@@ -245,10 +243,7 @@ $Task = {
         Remove-PSDrive FileDistoributor -ErrorAction Ignore
     }
 
-    [PSCustomObject]@{
-        ExecutionID = $executionID
-        Artifacts = $artifacts
-    }
+    $artifacts
 }
 
 
