@@ -190,7 +190,7 @@ $Task = {
             & $mount $step.配布.宛先
 
             Copy-Item $step.配布.ファイル "FileDistoributor:/"
-        } elseif ($step.配布) {
+        } elseif ($step.回収) {
             & $mount (Split-Path $step.回収.ファイル)
 
             $fname = "FileDistoributor:/$(Split-Path -Leaf $step.回収.ファイル)"
