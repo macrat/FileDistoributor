@@ -18,6 +18,34 @@ Import-Module $scriptPath\TaskPool
 Import-Module $scriptPath\powershell-yaml
 
 
+function Import-Hosts([string]$path) {
+    $result = @{}
+
+    foreach ($line in (Get-Content $path)) {
+          $line = $line.Trim() -replace "#.*$",""
+          if ($line -eq "") {
+              continue
+          }
+
+          $xs = $line.Split()
+
+          $name = $xs[0]
+          $addresses = [string[]]($xs | Select-Object -skip 1 | Where-Object { $_ -ne "" })
+          $value = [PSCustomObject]@{
+              HostName = $xs[0]
+              AddressList = $addresses
+          }
+
+          $result[$name] = $value
+          foreach ($x in $addresses) {
+              $result[$x] = $value
+          }
+    }
+
+    $result
+}
+
+
 function ConvertFrom-Configuration {
     $conf = $input | ConvertFrom-Yaml
 
@@ -68,6 +96,9 @@ function ConvertFrom-Configuration {
         } elseif ($step.DNS取得) {
             if (-not $step.DNS取得.保存先) {
                 Write-Error "$($i + 1)つめのステップが不正です: 保存先が設定されていません。" -ErrorAction Stop
+            }
+            if ($step.DNS取得.hosts) {
+                $step.DNS取得.hosts = Import-Hosts $step.DNS取得.hosts
             }
         } else {
             Write-Error "$($i + 1)つめのステップが不正です: 不明な指示 `"$($step.Keys)`" が設定されています。" -ErrorAction Stop
@@ -189,7 +220,7 @@ $Task = {
         if ($step.配布) {
             & $mount $step.配布.宛先
 
-            Copy-Item $step.配布.ファイル "FileDistoributor:/"
+            Copy-Item -Force $step.配布.ファイル "FileDistoributor:/"
         } elseif ($step.回収) {
             & $mount (Split-Path $step.回収.ファイル)
 
@@ -203,7 +234,7 @@ $Task = {
                 mkdir $targetDir
             }
 
-            Copy-Item -Recurse $fname $targetDir | Out-Null
+            Copy-Item -Force -Recurse $fname $targetDir | Out-Null
         } elseif ($step.ハッシュ取得) {
             & $mount (Split-Path $step.ハッシュ取得.ファイル)
 
@@ -226,9 +257,10 @@ $Task = {
                 })
             }
         } elseif ($step.DNS取得) {
-            $artifacts += @{
-                Path = $step.DNS取得.保存先
-                Content = [System.Net.Dns]::GetHostEntry($address) | foreach {
+            $entries = @()
+
+            if ($step.DNS取得.hosts) {
+                $entries += $step.DNS取得.hosts[$address] | foreach {
                     [PSCustomObject]@{
                         取得日時 = Get-Date
                         実行ID = $using:TPContext.ExecutionID
@@ -237,6 +269,21 @@ $Task = {
                         逆引きホスト名 = $_.HostName
                     }
                 }
+            }
+
+            $entries += [System.Net.Dns]::GetHostEntry($address) | foreach {
+                [PSCustomObject]@{
+                    取得日時 = Get-Date
+                    実行ID = $using:TPContext.ExecutionID
+                    ホスト = $address
+                    アドレス = $_.AddressList -join ","
+                    逆引きホスト名 = $_.HostName
+                }
+            }
+
+            $artifacts += @{
+                Path = $step.DNS取得.保存先
+                Content = $entries
             }
         }
 
