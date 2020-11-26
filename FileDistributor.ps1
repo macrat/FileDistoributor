@@ -29,16 +29,23 @@ function Import-Hosts([string]$path) {
 
           $xs = $line.Split()
 
-          $name = $xs[0]
-          $addresses = [string[]]($xs | Select-Object -skip 1 | Where-Object { $_ -ne "" })
-          $value = [PSCustomObject]@{
-              HostName = $xs[0]
-              AddressList = $addresses
+          $address = $xs[0]
+          $names = [string[]]($xs | Select-Object -skip 1 | Where-Object { $_ -ne "" })
+
+          $result[$address] = [PSCustomObject]@{
+              HostName = $names -join ","
+              AddressList = [string[]]@($address)
           }
 
-          $result[$name] = $value
-          foreach ($x in $addresses) {
-              $result[$x] = $value
+          foreach ($name in $names) {
+              if ($result.ContainsKey($name)) {
+                  $result[$name].AddressList += $address
+              } else {
+                  $result[$name] = [PSCustomObject]@{
+                      HostName = $name
+                      AddressList = [string[]]@($address)
+                  }
+              }
           }
     }
 
@@ -259,7 +266,7 @@ $Task = {
         } elseif ($step.DNS取得) {
             $entries = @()
 
-            if ($step.DNS取得.hosts) {
+            if ($step.DNS取得.hosts -and $step.DNS取得.hosts.ContainsKey($address)) {
                 $entries += $step.DNS取得.hosts[$address] | foreach {
                     [PSCustomObject]@{
                         取得日時 = Get-Date
@@ -271,13 +278,15 @@ $Task = {
                 }
             }
 
-            $entries += [System.Net.Dns]::GetHostEntry($address) | foreach {
-                [PSCustomObject]@{
-                    取得日時 = Get-Date
-                    実行ID = $using:TPContext.ExecutionID
-                    ホスト = $address
-                    アドレス = $_.AddressList -join ","
-                    逆引きホスト名 = $_.HostName
+            if ($entries.Count -eq 0) {
+                $entries += [System.Net.Dns]::GetHostEntry($address) | foreach {
+                    [PSCustomObject]@{
+                        取得日時 = Get-Date
+                        実行ID = $using:TPContext.ExecutionID
+                        ホスト = $address
+                        アドレス = $_.AddressList -join ","
+                        逆引きホスト名 = $_.HostName
+                    }
                 }
             }
 
